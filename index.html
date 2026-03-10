@@ -154,7 +154,7 @@ body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #
         <label style="font-size: 10px; font-weight:bold; color:#64748b;">MAIN SELECTION</label>
         <select id="view-year" onchange="applyFilters()"><option value="25">2025</option><option value="26" selected>2026</option></select>
         <select id="view-month" onchange="applyFilters()"><option value="jan">January</option><option value="feb">February</option><option value="mar" selected>March</option><option value="apr">April</option><option value="may">May</option><option value="jun">June</option><option value="jul">July</option><option value="ago">August</option><option value="sep">September</option><option value="oct">October</option><option value="nov">November</option><option value="dec">December</option></select>
-        <select id="view-type" onchange="applyFilters()"><option value="gen">Generation (MW)</option><option value="dem" selected>Demand (MW)</option><option value="stg-dem">Stg Demand (MW)</option><option value="stg-gen">Stg Generation (MW)</option></select>
+        <select id="view-type" onchange="applyFilters()"><option value="gen">Generation (MW)</option><option value="dem" selected>Demand (MW)</option><option value="stg-gen">Storage Generation (MW)</option><option value="stg-dem">Storage Demand (MW)</option></select>
         <select id="view-red" onchange="applyFilters()"><option value="ALL">DSO+TSO</option><option value="DSO">DSO</option><option value="TSO" selected>TSO</option></select>
     </div>
 
@@ -7711,8 +7711,8 @@ function updateHistoryChart(node) {
             datasets: [
                 { label: 'Gen (MW)', data: datasets.gen, borderColor: '#0078A8', tension: 0.3, fill: false },
                 { label: 'Dem (MW)', data: datasets.dem, borderColor: '#e74c3c', tension: 0.3, fill: false },
-                { label: 'Stg-Gen (MW)', data: datasets.stgGen, borderColor: '#38bdf8', tension: 0.3, fill: false },
-                { label: 'Stg-Dem (MW)', data: datasets.stgDem, borderColor: '#10b981', tension: 0.3, fill: false }
+                { label: 'Storage-Gen (MW)', data: datasets.stgGen, borderColor: '#38bdf8', tension: 0.3, fill: false },
+                { label: 'Storage-Dem (MW)', data: datasets.stgDem, borderColor: '#10b981', tension: 0.3, fill: false }
             ]
         },
         options: {
@@ -7782,3 +7782,4 @@ function updateNodeInfo(match) {
 </script>
 </body>
 </html>
+
