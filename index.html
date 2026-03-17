@@ -158,8 +158,9 @@ body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #
         <label style="font-size: 10px; font-weight:bold; color:#64748b;">MAIN SELECTION</label>
         <select id="view-year" onchange="applyFilters()"><option value="26" selected>2026</option></select>
         <select id="view-month" onchange="applyFilters()"><option value="jan">January</option><option value="feb">February</option><option value="mar" selected>March</option><option value="apr">April</option><option value="may">May</option><option value="jun">June</option><option value="jul">July</option><option value="ago">August</option><option value="sep">September</option><option value="oct">October</option><option value="nov">November</option><option value="dec">December</option></select>
-        <select id="view-type" onchange="applyFilters()"><option value="gen">Generation (MW)</option><option value="dem" selected>Demand (MW)</option><option value="storage">Storage Gen/Dem (MW)</option></select>
-        <select id="view-red" onchange="applyFilters()"><option value="ALL">DSO+TSO</option><option value="DSO">DSO</option><option value="TSO" selected>TSO</option></select>
+        <select id="view-red" onchange="updateTypeOptions()"><option value="ALL">DSO+TSO</option><option value="DSO">DSO</option><option value="TSO" selected>TSO</option>
+</select><select id="view-type" onchange="applyFilters()"><option value="gen">Generation (MW)</option><option value="dem" selected>Demand (MW)</option><option id="opt-storage" value="storage">Storage Gen/Dem (MW)</option>
+        </select>
     </div>
 	
     <div class="section-header">
@@ -7279,7 +7280,26 @@ legendControl.update = function() {
 	setupHistorySearch();
 }
 
+function updateTypeOptions() {
+    const red = document.getElementById('view-red').value;
+    const typeSelect = document.getElementById('view-type');
+    const storageOpt = document.getElementById('opt-storage');
 
+    // Se muestra en TSO y también en ALL (DSO+TSO)
+    if (red === 'TSO' || red === 'ALL') {
+        storageOpt.style.display = 'block';
+    } else {
+        // Se oculta solo si es estrictamente DSO
+        storageOpt.style.display = 'none';
+        
+        // Si el usuario estaba viendo Storage y cambia a DSO, reseteamos a gen
+        if (typeSelect.value === 'storage') {
+            typeSelect.value = 'gen';
+        }
+    }
+    applyFilters();}
+
+	
 function applyFilters() {
     markersLayer.clearLayers(); 
     projectsLayer.clearLayers();
