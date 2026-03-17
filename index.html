@@ -261,17 +261,22 @@ L.control.scale({imperial: false, metric: true, position: 'bottomright' }).addTo
 
 map.pm.addControls({ position: 'topright',drawMarker: false, drawCircleMarker: false, drawPolyline: true, drawRectangle: false, drawPolygon: true, drawCircle: false, drawText: true, editControls: true, editMode: false, dragMode: false, cutLayer: false, rotateMode: false, removalMode: true, oneBlock: true});
 map.pm.setGlobalOptions({ measurements: { measurement: true, displayFullDistance: true, showArea: true, totalLengthUnit: 'kilometers', areaUnit: 'hectares', showCurrentMeasurement: true},
-    templineStyle: { color: '#f97316' }, // Naranja mientras dibujas
-    hintlineStyle: { color: '#f97316', dashArray: [5, 5] },
-    pathOptions: { color: '#0078A8', fillColor: '#0078A8', fillOpacity: 0.3 }});
-map.on('pm:create', (e) => {
+    finishOn: 'dblclick', 
+    allowSelfIntersection: false,
+    templineStyle: { color: '#f97316', weight: 3 },
+    pathOptions: { color: '#0078A8', fillColor: '#0078A8', fillOpacity: 0.3, weight: 3 }
+});
+map.on('pm:create', function(e) {
     const layer = e.layer;
-    if (layer.pm) {
+
+    if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
         layer.pm.enable({
-            allowSelfIntersection: false,
+            measurements: { measurement: true }
         });
+        layer.pm.disable(); // Deshabilitamos edición pero mantenemos la etiqueta
     }
-    map.pm.disableDrawSelection();
+    // Volver al cursor normal automáticamente
+    map.pm.disableDraw();
 });
 	
 proj4.defs("EPSG:32630", "+proj=utm +zone=30 +ellps=WGS84 +datum=WGS84 +units=m +no_defs");
