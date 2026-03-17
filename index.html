@@ -158,8 +158,8 @@ body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #
         <label style="font-size: 10px; font-weight:bold; color:#64748b;">MAIN SELECTION</label>
         <select id="view-year" onchange="applyFilters()"><option value="26" selected>2026</option></select>
         <select id="view-month" onchange="applyFilters()"><option value="jan">January</option><option value="feb">February</option><option value="mar" selected>March</option><option value="apr">April</option><option value="may">May</option><option value="jun">June</option><option value="jul">July</option><option value="ago">August</option><option value="sep">September</option><option value="oct">October</option><option value="nov">November</option><option value="dec">December</option></select>
-        <select id="view-red" onchange="updateTypeOptions()"><option value="ALL">DSO+TSO</option><option value="DSO">DSO</option><option value="TSO" selected>TSO</option>
-</select><select id="view-type" onchange="applyFilters()"><option value="gen">Generation (MW)</option><option value="dem" selected>Demand (MW)</option><option id="opt-storage" value="storage">Storage Gen/Dem (MW)</option>
+        <select id="view-red" onchange="applyFilters()"><option value="ALL">DSO+TSO</option><option value="DSO">DSO</option><option value="TSO" selected>TSO</option>
+</select><select id="view-type" onchange="applyFilters()"><option value="gen">Generation (MW)</option><option value="dem" selected>Demand (MW)</option><option value="storage">Storage Gen/Dem (MW)</option>
         </select>
     </div>
 	
@@ -7279,26 +7279,6 @@ legendControl.update = function() {
     	applyFilters();
 	setupHistorySearch();
 }
-
-function updateTypeOptions() {
-    const red = document.getElementById('view-red').value;
-    const typeSelect = document.getElementById('view-type');
-    const storageOpt = document.getElementById('opt-storage');
-
-    // Se muestra en TSO y también en ALL (DSO+TSO)
-    if (red === 'TSO' || red === 'ALL') {
-        storageOpt.style.display = 'block';
-    } else {
-        // Se oculta solo si es estrictamente DSO
-        storageOpt.style.display = 'none';
-        
-        // Si el usuario estaba viendo Storage y cambia a DSO, reseteamos a gen
-        if (typeSelect.value === 'storage') {
-            typeSelect.value = 'gen';
-        }
-    }
-    applyFilters();}
-
 	
 function applyFilters() {
     markersLayer.clearLayers(); 
@@ -7343,14 +7323,21 @@ function applyFilters() {
         
         if (matchesRed && sel.tens.includes(e.tens) && sel.prov.includes(e.prov) && sel.oper.includes(e.oper)) {
             let rawValue;
-            if (type === 'storage') {
-                // El tamaño del círculo lo determina el MÍNIMO
-                const vGen = e[stgGenKey] || 0;
-                const vDem = e[stgDemKey] || 0;
-                rawValue = Math.min(vGen, vDem);
-            } else {
-                rawValue = e[`${year}_${month}_${type}`];
-            }
+
+		if (type === 'storage') {
+   			 // Definimos qué columnas usar según la red de cada punto individual (e.grid)
+   			 const genCol = (e.grid === 'TSO') ? `${year}_${month}_stg-gen` : `${year}_${month}_gen`;
+    		 const demCol = (e.grid === 'TSO') ? `${year}_${month}_stg-dem` : `${year}_${month}_dem`;
+
+   			 const vGen = e[genCol] || 0;
+   			 const vDem = e[demCol] || 0;
+
+    		// El tamaño del círculo será el MÍNIMO de esas dos columnas
+    		rawValue = Math.min(vGen, vDem);
+			} else {
+    		// Caso normal (Gen o Dem puro)
+    		rawValue = e[`${year}_${month}_${type}`];
+			}
 
             let rFound = ranges.find(r => typeof rawValue === 'number' && !isNaN(rawValue) && rawValue <= r.limit) || noInfoConfig;
             
@@ -7394,19 +7381,33 @@ function applyFilters() {
             };
 
             let capacityRows = "";
-            if (type === 'storage') {
-                const vG = item[stgGenKey], pG = item[prevStgGenKey];
-                const vD = item[stgDemKey], pD = item[prevStgDemKey];
-                
-                capacityRows = `
-                    <tr><td style="color: #666; padding: 2px 0;">Stg. Gen (Discharge):</td><td style="font-weight: bold; text-align: right; color:#f97316;">${isNaN(vG)?'No Info':vG+' MW'}${getTrend(vG, pG)}</td></tr>
-                    <tr><td style="color: #666; padding: 2px 0;">Stg. Dem (Charge):</td><td style="font-weight: bold; text-align: right; color:#0ea5e9;">${isNaN(vD)?'No Info':vD+' MW'}${getTrend(vD, pD)}</td></tr>
-                    <tr style="border-top: 1px dashed #ccc; background: #f8fafc;"><td style="color: #000; padding: 4px 0; font-size:10px; font-weight:bold;">Effective (Min):</td><td style="font-weight: bold; text-align: right; font-size:10px;">${Math.min(vG||0, vD||0)} MW</td></tr>`;
-            } else {
+				if (type === 'storage') {
+   				// Determinamos origen de datos para este item específico
+    			const isTSO = item.grid === 'TSO';
+    			const suffixGen = isTSO ? 'stg-gen' : 'gen';
+    			const suffixDem = isTSO ? 'stg-dem' : 'dem';
+    			const labelPrefix = isTSO ? 'Stg. ' : '';
+
+    			const vG = item[`${year}_${month}_${suffixGen}`];
+    			const vD = item[`${year}_${month}_${suffixDem}`];
+    
+    			// Obtenemos tendencias (usando la misma lógica de sufijos para el mes anterior)
+    			const pG = item[`${prevYear}_${pMonth}_${suffixGen}`];
+    			const pD = item[`${prevYear}_${pMonth}_${suffixDem}`];
+
+    			capacityRows = `<tr>
+				<td style="color: #666; padding: 2px 0;">${labelPrefix}Stg. Gen (Discharge):</td>
+            	<td style="font-weight: bold; text-align: right; color:#f97316;">${isNaN(vG)?'0':vG+' MW'}${getTrend(vG, pG)}</td></tr>
+        		<tr><td style="color: #666; padding: 2px 0;">${labelPrefix}Stg. Dem (Charge):</td>
+            	<td style="font-weight: bold; text-align: right; color:#0ea5e9;">${isNaN(vD)?'0':vD+' MW'}${getTrend(vD, pD)}</td></tr>
+        		<tr style="border-top: 1px dashed #ccc; background: #f8fafc;"> <td style="color: #000; padding: 4px 0; font-size:10px; font-weight:bold;">Effective (Min):</td>
+            	<td style="font-weight: bold; text-align: right; font-size:10px;">${Math.min(vG||0, vD||0)} MW</td>
+				</tr>`;
+				} else {
                 const v = item[`${year}_${month}_${type}`], pV = item[`${prevYear}_${pMonth}_${type}`];
                 const label = type === 'gen' ? 'Gen' : (type === 'dem' ? 'Dem' : type);
                 capacityRows = `<tr><td style="color: #666; padding: 2px 0;">Capacity (${label}):</td><td style="font-weight: bold; text-align: right; color:#f97316;">${isNaN(v)?'No Info':v+' MW'}${getTrend(v, pV)}</td></tr>`;
-            }
+            	}
 
             popupHtml += `
                 <div style="border-bottom: 1px solid #eee; padding: 8px 0; margin-bottom: 4px;">
