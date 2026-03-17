@@ -7325,35 +7325,58 @@ function applyFilters() {
         
         if (matchesRed && sel.tens.includes(e.tens) && sel.prov.includes(e.prov) && sel.oper.includes(e.oper)) {
             let rawValue;
-
+			let isMissingData = false;
+			
 		if (type === 'storage') {
-   			 // Definimos qué columnas usar según la red de cada punto individual (e.grid)
-   			 const genCol = (e.grid === 'TSO') ? `${year}_${month}_stg-gen` : `${year}_${month}_gen`;
-    		 const demCol = (e.grid === 'TSO') ? `${year}_${month}_stg-dem` : `${year}_${month}_dem`;
+            const genCol = (e.grid === 'TSO') ? `${year}_${month}_stg-gen` : `${year}_${month}_gen`;
+            const demCol = (e.grid === 'TSO') ? `${year}_${month}_stg-dem` : `${year}_${month}_dem`;
 
-   			 const vGen = e[genCol] || 0;
-   			 const vDem = e[demCol] || 0;
+            // Usamos cleanNum para normalizar (guiones -> NaN, comas -> puntos, redondeo)
+            const vGen = cleanNum(e[genCol]);
+            const vDem = cleanNum(e[demCol]);
 
-    		// El tamaño del círculo será el MÍNIMO de esas dos columnas
-    		rawValue = Math.min(vGen, vDem);
-			} else {
-    		// Caso normal (Gen o Dem puro)
-    		rawValue = e[`${year}_${month}_${type}`];
-			}
-
-            let rFound = ranges.find(r => typeof rawValue === 'number' && !isNaN(rawValue) && rawValue <= r.limit) || noInfoConfig;
-            
-            if (rFound.visible) {
-                rFound.count++; 
-                if(e.grid === 'DSO') dsoT++; else tsoT++;
-                const key = `${e.x}_${e.y}`;
-                if (!groupedForMap[key]) {
-                    groupedForMap[key] = { x: e.x, y: e.y, items: [], mainConfig: rFound };
-                }
-                groupedForMap[key].items.push(e);
+            // Si CUALQUIERA de los dos no tiene dato, marcamos como Missing
+            if (isNaN(vGen) || isNaN(vDem)) {
+                isMissingData = true;
+            } else {
+                rawValue = Math.min(vGen, vDem);
+            }
+        } else {
+            // Caso normal (Gen o Dem puro)
+            const val = cleanNum(e[`${year}_${month}_${type}`]);
+            if (isNaN(val)) {
+                isMissingData = true;
+            } else {
+                rawValue = val;
             }
         }
-    });
+
+            let rFound;
+        if (isMissingData) {
+            rFound = noInfoConfig;
+        } else {
+            // Buscamos el rango correspondiente (0 MW caerá en el primer rango, ej: 0-1)
+            rFound = ranges.find(r => rawValue <= r.limit) || noInfoConfig;
+        }
+        
+        // Registro en el mapa y contadores
+        if (rFound.visible) {
+            rFound.count++; 
+            if(e.grid === 'DSO') dsoT++; else tsoT++;
+            
+            const key = `${e.x}_${e.y}`;
+            if (!groupedForMap[key]) {
+                groupedForMap[key] = { 
+                    x: e.x, 
+                    y: e.y, 
+                    items: [], 
+                    mainConfig: rFound // El primer item determina el color del círculo agrupado
+                };
+            }
+            groupedForMap[key].items.push(e);
+        }
+    }
+});
 
     // 3. Proyectos HECE
     projectsData.forEach(p => {
