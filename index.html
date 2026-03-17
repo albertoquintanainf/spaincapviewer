@@ -7217,13 +7217,15 @@ legendControl.update = function() {
     // Si es SOLO un guion, es "No Info"
     if (val.toString().trim() === "-") return NaN;
 
-    // Si es un número o un string que representa un número (aunque sea negativo)
+    // Limpieza de espacios y comas
     let clean = val.toString().replace(/\s/g, '').replace(',', '.');
     let num = parseFloat(clean);
     
-    return isNaN(num) ? NaN : num;
+    if (isNaN(num)) return NaN;
+
+    // REDONDEO A 2 DECIMALES
+    return Math.round(num * 100) / 100;
 }
-	
         function init() {
     if (!rawData) return;
     
@@ -7373,41 +7375,58 @@ function applyFilters() {
         g.items.forEach(item => {
             // Función interna para calcular tendencia (se mantiene igual)
             const getTrend = (val, pVal) => {
-                if (isNaN(val) || isNaN(pVal)) return "";
-                const diff = val - pVal;
-                if (diff > 0) return `<span style="color: #22c55e; font-weight: bold; margin-left: 5px;">▲ +${diff}</span>`;
-                if (diff < 0) return `<span style="color: #ef4444; font-weight: bold; margin-left: 5px;">▼ ${diff}</span>`;
-                return `<span style="color: #666; font-weight: bold; margin-left: 5px;">=</span>`;
-            };
+    		// Si el valor actual es NaN, no hay tendencia
+    		if (isNaN(val)) return "";
+    		// Si el anterior es NaN, lo tratamos como 0 por tu requisito
+    		const current = val;
+    		const previous = isNaN(pVal) ? 0 : pVal;
+			if (isNaN(previous) && !isNaN(current)) {return `<span style="color: #3b82f6; font-size: 10px; font-weight: bold; margin-left: 5px; border: 1px solid #3b82f6; padding: 1px 3px; border-radius: 4px;">🆕 NEW DATA</span>`;}
+			if (!isNaN(previous) && isNaN(current)) {return `<span style="color: #94a3b8; font-size: 10px; font-weight: bold; margin-left: 5px; border: 1px solid #94a3b8; padding: 1px 3px; border-radius: 4px;">🚫 DATA LOST</span>`;}
+			if (isNaN(current)) return "";
+				
+    		const diff = Math.round((current - previous) * 100) / 100;
+    		if (diff > 0) return `<span style="color: #22c55e; font-weight: bold; margin-left: 5px;">▲ +${diff}</span>`;
+    		if (diff < 0) return `<span style="color: #ef4444; font-weight: bold; margin-left: 5px;">▼ ${diff}</span>`;
+    		return `<span style="color: #666; font-weight: bold; margin-left: 5px;">=</span>`;
+			};
 
             let capacityRows = "";
-				if (type === 'storage') {
-   				// Determinamos origen de datos para este item específico
-    			const isTSO = item.grid === 'TSO';
-    			const suffixGen = isTSO ? 'stg-gen' : 'gen';
-    			const suffixDem = isTSO ? 'stg-dem' : 'dem';
-    			const labelPrefix = isTSO ? 'Stg. ' : '';
+if (type === 'storage') {
+    const isTSO = item.grid === 'TSO';
+    const suffixGen = isTSO ? 'stg-gen' : 'gen';
+    const suffixDem = isTSO ? 'stg-dem' : 'dem';
+ 
+    const vG = cleanNum(item[`${year}_${month}_${suffixGen}`]);
+    const vD = cleanNum(item[`${year}_${month}_${suffixDem}`]);
+    const pG = cleanNum(item[`${prevYear}_${pMonth}_${suffixGen}`]);
+    const pD = cleanNum(item[`${prevYear}_${pMonth}_${suffixDem}`]);
 
-    			const vG = item[`${year}_${month}_${suffixGen}`];
-    			const vD = item[`${year}_${month}_${suffixDem}`];
+    const displayG = isNaN(vG) ? 0 : vG;
+    const displayD = isNaN(vD) ? 0 : vD;
+
+    capacityRows = `<tr>
+			<td style="color: #666; padding: 2px 0;">Stg. Gen (Discharge):</td>
+            <td style="font-weight: bold; text-align: right; color:#f97316;">${displayG} MW${getTrend(vG, pG)}</td>
+        	</tr>
+        	<tr>
+            <td style="color: #666; padding: 2px 0;">Stg. Dem (Charge):</td>
+            <td style="font-weight: bold; text-align: right; color:#0ea5e9;">${displayD} MW${getTrend(vD, pD)}</td>
+        	</tr>
+        	<tr style="border-top: 1px dashed #ccc; background: #f8fafc;"> 
+            <td style="color: #000; padding: 4px 0; font-size:10px; font-weight:bold;">Effective (Min):</td>
+            <td style="font-weight: bold; text-align: right; font-size:10px;">${Math.min(displayG, displayD)} MW</td>
+        	</tr>`;
+			} else {
+    		// Caso Gen o Dem puro
+    		const v = cleanNum(item[`${year}_${month}_${type}`]);
+    		const pV = cleanNum(item[`${prevYear}_${pMonth}_${type}`]);
+    		const label = type === 'gen' ? 'Gen' : 'Dem';
     
-    			// Obtenemos tendencias (usando la misma lógica de sufijos para el mes anterior)
-    			const pG = item[`${prevYear}_${pMonth}_${suffixGen}`];
-    			const pD = item[`${prevYear}_${pMonth}_${suffixDem}`];
-
-    			capacityRows = `<tr>
-				<td style="color: #666; padding: 2px 0;">${labelPrefix}Stg. Gen (Discharge):</td>
-            	<td style="font-weight: bold; text-align: right; color:#f97316;">${isNaN(vG)?'0':vG+' MW'}${getTrend(vG, pG)}</td></tr>
-        		<tr><td style="color: #666; padding: 2px 0;">${labelPrefix}Stg. Dem (Charge):</td>
-            	<td style="font-weight: bold; text-align: right; color:#0ea5e9;">${isNaN(vD)?'0':vD+' MW'}${getTrend(vD, pD)}</td></tr>
-        		<tr style="border-top: 1px dashed #ccc; background: #f8fafc;"> <td style="color: #000; padding: 4px 0; font-size:10px; font-weight:bold;">Effective (Min):</td>
-            	<td style="font-weight: bold; text-align: right; font-size:10px;">${Math.min(vG||0, vD||0)} MW</td>
-				</tr>`;
-				} else {
-                const v = item[`${year}_${month}_${type}`], pV = item[`${prevYear}_${pMonth}_${type}`];
-                const label = type === 'gen' ? 'Gen' : (type === 'dem' ? 'Dem' : type);
-                capacityRows = `<tr><td style="color: #666; padding: 2px 0;">Capacity (${label}):</td><td style="font-weight: bold; text-align: right; color:#f97316;">${isNaN(v)?'No Info':v+' MW'}${getTrend(v, pV)}</td></tr>`;
-            	}
+    		capacityRows = `<tr>
+        	<td style="color: #666; padding: 2px 0;">Capacity (${label}):</td>
+        	<td style="font-weight: bold; text-align: right; color:#f97316;">${isNaN(v) ? '0 MW' : v + ' MW'}${getTrend(v, pV)}</td>
+    		</tr>`;
+			}
 
             popupHtml += `
                 <div style="border-bottom: 1px solid #eee; padding: 8px 0; margin-bottom: 4px;">
