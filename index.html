@@ -8009,43 +8009,35 @@ function handleKML(input) {
     else { reader.readAsText(file); }
 }
 function renderKML(xmlData) {
-    // 1. Limpiamos lo anterior
-    if (window.currentParcel) { 
-        map.removeLayer(window.currentParcel); 
-    }
-
-    // 2. Creamos la capa desde el XML
+    // 1. Parseamos el XML (esto no lo añade al mapa, solo lo procesa)
     const layer = omnivore.kml.parse(xmlData);
     
     layer.on('ready', function() {
-        // Aplicamos el estilo naranja
+        // 2. Aplicamos el estilo naranja translúcido
         this.setStyle({
-            color: "#f97316",
-            weight: 3,
-            fillOpacity: 0.1,
-            interactive: false 
+            color: "#f97316",    // Color naranja TSO/DSO
+            weight: 3,           // Borde grueso
+            fillOpacity: 0.1,   // Relleno muy transparente
+            interactive: false   // ¡Importante! Para poder clicar nodos debajo
         });
 
-        // 3. SEGURO DE CENTRADO:
-        // Intentamos centrar inmediatamente
-        const bounds = this.getBounds();
-        if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50] });
-        } else {
-            // Si falla por milisegundos de carga, reintentamos en el siguiente ciclo
-            setTimeout(() => {
-                const retryBounds = this.getBounds();
-                if (retryBounds.isValid()) {
-                    map.fitBounds(retryBounds, { padding: [50, 50] });
-                }
-            }, 50);
-        }
+        // 3. RECUPERAMOS EL ZOOM (Forzado con pequeño retraso para asegurar el cálculo)
+        setTimeout(() => {
+            const bounds = this.getBounds();
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+                console.log("Mapa centrado en la parcela cargada.");
+            } else {
+                console.warn("No se pudieron calcular los límites de la parcela.");
+            }
+        }, 100); // 100ms es suficiente
     });
 
+    // 4. Añadimos la capa al mapa y la guardamos en global
     layer.addTo(map);
     window.currentParcel = layer;
 }
-
+	
 </script>
 </body>
 </html>
