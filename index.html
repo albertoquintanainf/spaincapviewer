@@ -136,7 +136,6 @@ body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #
     line-height: 1;
     background-image: none !important; /* Eliminamos cualquier imagen previa */
 }
-.leaflet-control-kml { display: none;}
 
 	
 </style>
@@ -241,7 +240,7 @@ body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #
     </div>
 </div>
 
-<input type="file" id="kml-upload" style="display: none;" accept=".kml,.kmz" onchange="handleKML(this)">
+<input type="file" id="kml-upload" style="display: none;" onchange="handleKML(this)" accept=".kml,.kmz">
 
 
 <script>
@@ -8020,33 +8019,34 @@ function handleKML(input) {
     else { reader.readAsText(file); }
 }
 function renderKML(xmlData) {
-    // 1. Parseamos el XML (esto no lo añade al mapa, solo lo procesa)
+    // 1. Parseamos el XML
     const layer = omnivore.kml.parse(xmlData);
     
-    layer.on('ready', function() {
-        // 2. Aplicamos el estilo naranja translúcido
-        this.setStyle({
-            color: "#f97316",    // Color naranja TSO/DSO
-            weight: 3,           // Borde grueso
-            fillOpacity: 0.1,   // Relleno muy transparente
-            interactive: false   // ¡Importante! Para poder clicar nodos debajo
-        });
-
-        // 3. RECUPERAMOS EL ZOOM (Forzado con pequeño retraso para asegurar el cálculo)
-        setTimeout(() => {
-            const bounds = this.getBounds();
-            if (bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [50, 50] });
-                console.log("Mapa centrado en la parcela cargada.");
-            } else {
-                console.warn("No se pudieron calcular los límites de la parcela.");
-            }
-        }, 100); // 100ms es suficiente
+    // 2. Aplicamos el estilo directamente (sin esperar al evento ready si es posible)
+    layer.setStyle({
+        color: "#f97316",
+        weight: 3,
+        fillOpacity: 0.1,
+        interactive: false
     });
 
-    // 4. Añadimos la capa al mapa y la guardamos en global
-    layer.addTo(map);
+    // 3. Añadimos a la capa global y al mapa
+    if (window.currentParcel) { map.removeLayer(window.currentParcel); }
     window.currentParcel = layer;
+    layer.addTo(map);
+
+    // 4. EL FIX DEL ZOOM: Usamos un intervalo corto para esperar a que los datos existan
+    let checks = 0;
+    const interval = setInterval(() => {
+        const bounds = layer.getBounds();
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+            clearInterval(interval);
+            console.log("Zoom realizado con éxito.");
+        }
+        if (checks > 10) clearInterval(interval); // Evitar bucle infinito si el KML está vacío
+        checks++;
+    }, 50); 
 }
 	
 </script>
