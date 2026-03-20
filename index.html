@@ -256,7 +256,7 @@ body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #
 var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
     attribution: '© OpenStreetMap contributors' });
 var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'});
+    attribution: 'Tiles &copy; Esri'});
 var map = L.map('map', { zoomControl: false, layers: [osmLayer] }).setView([40.41, -3.70], 6);
 var baseMaps = {"Street Map": osmLayer, "Satelite": satelliteLayer};
 
