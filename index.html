@@ -14,7 +14,8 @@
 	<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.js"></script>
 
 	<script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js'></script>
-		
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+	
 <style>
 
 /* --- BASE & MAP --- */
@@ -7951,18 +7952,44 @@ function handleKML(input) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
-        if (window.currentParcel) {
-            map.removeLayer(window.currentParcel);
-        }
+    const isKMZ = file.name.toLowerCase().endsWith('.kmz');
 
-        window.currentParcel = omnivore.kml(e.target.result)
-            .on('ready', function() { this.setStyle({ color: "#f97316", weight: 3, fillOpacity: 0.1, interactive: false  });
-                map.fitBounds(this.getBounds(), { padding: [50, 50] }); })
-            .addTo(map);
+    reader.onload = function(e) {
+        if (window.currentParcel) { map.removeLayer(window.currentParcel); }
+
+        if (isKMZ) {
+            JSZip.loadAsync(e.target.result).then(function(zip) {
+                // Buscamos el archivo .kml dentro del zip
+                const kmlFile = Object.keys(zip.files).find(f => f.endsWith('.kml'));
+                return zip.file(kmlFile).async("string");
+            }).then(function(kmlText) {
+                renderKML(kmlText);
+            });
+        } else {
+            renderKML(e.target.result);
+        }
     };
-    reader.readAsDataURL(file);
-}	
+
+    if (isKMZ) {
+        reader.readAsArrayBuffer(file); // KMZ se lee como binario
+    } else {
+        reader.readAsText(file); // KML se lee como texto
+    }
+}
+
+function renderKML(xmlData) {
+    window.currentParcel = omnivore.kml.parse(xmlData)
+        .on('ready', function() {
+            this.setStyle({
+                color: "#f97316",
+                weight: 3,
+                fillOpacity: 0.1,
+                interactive: false 
+            });
+            map.fitBounds(this.getBounds(), { padding: [50, 50] });
+        })
+        .addTo(map);
+}
 
 </script>
 </body>
